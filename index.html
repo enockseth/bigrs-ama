@@ -9,21 +9,118 @@
     <style>
         body { margin:0; padding:0; }
         #map { position:absolute; top:0; bottom:0; width:100%; }
+
+        #menu {
+        background: #fff;
+        position: absolute;
+        z-index: 1;
+        top: 10px;
+        right: 10px;
+        border-radius: 3px;
+        width: 120px;
+        border: 1px solid rgba(0,0,0,0.4);
+        font-family: 'Open Sans', sans-serif;
+    }
+
+    #menu a {
+        font-size: 13px;
+        color: #404040;
+        display: block;
+        margin: 0;
+        padding: 0;
+        padding: 10px;
+        text-decoration: none;
+        border-bottom: 1px solid rgba(0,0,0,0.25);
+        text-align: center;
+    }
+
+    #menu a:last-child {
+        border: none;
+    }
+
+    #menu a:hover {
+        background-color: #f8f8f8;
+        color: #404040;
+    }
+
+    #menu a.active {
+        background-color: #3887be;
+        color: #ffffff;
+    }
+
+    #menu a.active:hover {
+        background: #3074a4;
+    }
+    #menu-top {
+      position: absolute;
+      background: #fff;
+      padding: 10px;
+      font-family: 'Open Sans', sans-serif;
+}
     </style>
 </head>
 <body>
 
 
+<nav id="menu"></nav>
 <div id='map'></div>
+<div id='#'>
+<input id='basic' type='radio' name='rtoggle' value='basic' checked='checked'>
+<label for='basic'>basic</label>
+<input id='streets' type='radio' name='rtoggle' value='streets'>
+<label for='streets'>streets</label>
+<input id='bright' type='radio' name='rtoggle' value='bright'>
+<label for='bright'>bright</label>
+<input id='light' type='radio' name='rtoggle' value='light'>
+<label for='light'>light</label>
+<input id='dark' type='radio' name='rtoggle' value='dark'>
+<label for='dark'>dark</label>
+<input id='satellite' type='radio' name='rtoggle' value='satellite'>
+<label for='satellite'>satellite</label>
+</div>
 
 <script>
+// mapboxgl.accessToken = 'pk.eyJ1IjoiZW5vY2tzNHNldGgiLCJhIjoiY2lwMGVkcDdkMDBnZXZrbTJlejF0N3BwdCJ9.2IBX8ZoC3S6ySn01m-ggEQ';
+// var map = new mapboxgl.Map({
+//     container: 'map',
+//     style: 'mapbox://styles/mapbox/dark-v9',
+//     center: [ 5.5600141, -0.2057437],
+//     zoom: 5
+// });
+
 mapboxgl.accessToken = 'pk.eyJ1IjoiZW5vY2tzNHNldGgiLCJhIjoiY2lwMGVkcDdkMDBnZXZrbTJlejF0N3BwdCJ9.2IBX8ZoC3S6ySn01m-ggEQ';
+
 var map = new mapboxgl.Map({
-    container: 'map',
-    style: 'mapbox://styles/mapbox/dark-v9',
-    center: [9.4043366, -0.8430289],
-    zoom: 4
+  container: 'map',
+  style: 'mapbox://styles/mapbox/streets-v9',
+  zoom: 12,
+  center: [-0.2197, 5.5893]
 });
+
+  // Create a popup, but don't add it to the map yet.
+  var popup = new mapboxgl.Popup({
+    closeButton: false,
+    closeOnClick: false
+  });
+  var x="Entry: ";
+  function showPopup(e) {
+    // Updates the cursor to a hand (interactivity)
+    map.getCanvas().style.cursor = 'pointer';
+    // Show the popup at the coordinates with some data
+    popup.setLngLat(e.features[0].geometry.coordinates)
+      .setHTML("<center><strong>"+checkEmpty(e.features[0].properties.name)+"</strong></center>")
+      .addTo(map);
+  }
+  function hidePopup() {
+    map.getCanvas().style.cursor = '';
+    popup.remove();
+  }
+  function checkEmpty(info) {
+    return (info) ? info : "No data";
+  }
+// CHANGE: Add layer names that need to be interactive
+  map.on('mouseenter', 'schools', showPopup);
+  map.on('mouseleave', 'schools', hidePopup);
 
 map.on('load', function() {
     // Add a geojson point source.
@@ -32,7 +129,6 @@ map.on('load', function() {
         "type": "geojson",
         "data": "./pedestrian.geojson"
     });
-
     map.addLayer({
         "id": "pedestrian-heat",
         "type": "heatmap",
@@ -43,7 +139,7 @@ map.on('load', function() {
             "heatmap-weight": [
                 "interpolate",
                 ["linear"],
-                ["get", "ACCIDENT SEVERITY"],
+                ["get", "acc_sev"],
                 0, 0,
                 6, 1
             ],
@@ -87,7 +183,7 @@ map.on('load', function() {
                 9, 0
             ],
         }
-    }, 'waterway-label');
+    });
 
     map.addLayer({
         "id": "pedestrian-point",
@@ -103,14 +199,14 @@ map.on('load', function() {
                 7, [
                     "interpolate",
                     ["linear"],
-                    ["get", "ACCIDENT SEVERITY"],
+                    ["get", "acc_sev"],
                     1, 1,
                     6, 4
                 ],
                 8, [
                     "interpolate",
                     ["linear"],
-                    ["get", "ACCIDENT SEVERITY"],
+                    ["get", "acc_sev"],
                     1, 5,
                     6, 20
                 ]
@@ -119,7 +215,7 @@ map.on('load', function() {
             "circle-color": [
                 "interpolate",
                 ["linear"],
-                ["get", "ACCIDENT SEVERITY"],
+                ["get", "acc_sev"],
                 1, "rgba(33,102,172,0)",
                 2, "rgb(103,169,207)",
                 3, "rgb(209,229,240)",
@@ -138,8 +234,66 @@ map.on('load', function() {
                 8, 1
             ]
         }
-    }, 'waterway-label');
+    });
+
+    map.addSource('schools', {
+        "type": "geojson",
+        "data": "./schools.geojson"
+    });
+    map.addLayer({
+        "id": "schools",
+        "type": "circle",
+        "source": "schools",
+        'layout': {
+          'visibility': 'visible'
+        },
+        'paint': {
+          'circle-radius': 8,
+          'circle-color': 'rgba(122,48,179,1)'
+        }
+      });
 });
+
+ 
+ var toggleableLayerIds = [ 'pedestrian-point', 'schools' ];
+ for (var i = 0; i < toggleableLayerIds.length; i++) {
+  var id = toggleableLayerIds[i];
+  var link = document.createElement('a');
+  link.href = '#';
+  link.className = 'active';
+  link.textContent = id;
+   
+  link.onclick = function (e) {
+  var clickedLayer = this.textContent;
+  e.preventDefault();
+  e.stopPropagation();
+   
+  var visibility = map.getLayoutProperty(clickedLayer, 'visibility');
+   
+  if (visibility === 'visible') {
+  map.setLayoutProperty(clickedLayer, 'visibility', 'none');
+  this.className = '';
+  } else {
+  this.className = 'active';
+  map.setLayoutProperty(clickedLayer, 'visibility', 'visible');
+  }
+};
+ 
+var layers = document.getElementById('menu');
+  layers.appendChild(link);
+}
+
+var layerList = document.getElementById('menu-top');
+var inputs = layerList.getElementsByTagName('input');
+ 
+function switchLayer(layer) {
+  var layerId = layer.target.id;
+  map.setStyle('mapbox://styles/mapbox/' + layerId + '-v9');
+}
+ 
+for (var i = 0; i < inputs.length; i++) {
+  inputs[i].onclick = switchLayer;
+}
 </script>
 
 </body>
